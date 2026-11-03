@@ -14,13 +14,13 @@ definitions:
       name: Build Android (AAB)
       script: |
         bash ../android-signing.sh
-        flutter build appbundle --release --build-number=$((100 + BUILD_NUMBER))
-        flutter build apk --release --build-number=$((100 + BUILD_NUMBER))
+        flutter build appbundle --release --obfuscate --split-debug-info=build/symbols --build-number=$((100 + BUILD_NUMBER))
+        flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols --build-number=$((100 + BUILD_NUMBER))
     - &ios_build
       name: Build iOS (IPA)
       script: |
         xcode-project use-profiles
-        flutter build ipa --release --build-number=$((100 + BUILD_NUMBER)) --export-options-plist=/Users/builder/export_options.plist
+        flutter build ipa --release --obfuscate --split-debug-info=build/symbols --build-number=$((100 + BUILD_NUMBER)) --export-options-plist=/Users/builder/export_options.plist
 
 workflows:
   shop-android:
@@ -34,7 +34,8 @@ workflows:
       - *android_build
     artifacts:
       - build/app/outputs/bundle/release/*.aab
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+      - build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
       - peachpiper_shop/build/app/outputs/bundle/release/*.aab
 
   shop-ios:
@@ -73,7 +74,8 @@ workflows:
       - *android_build
     artifacts:
       - build/app/outputs/bundle/release/*.aab
-      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+      - build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
       - peachpiper_admin/build/app/outputs/bundle/release/*.aab
 
   admin-ios:
