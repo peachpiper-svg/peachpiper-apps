@@ -60,7 +60,8 @@ class _ProductScreenState extends State<ProductScreen> {
     final p = widget.p;
     final s = context.watch<StoreState>();
     final wish = context.watch<WishState>();
-    final similar = s.inCategory(p.category).where((x) => x.id != p.id).take(6).toList();
+    final paired = s.pairFor(p);
+    final similar = s.inCategory(p.category).where((x) => x.id != p.id && !paired.contains(x)).take(6).toList();
     final shown = picked ?? (p.variants.isNotEmpty ? p.variants.first : null);
     return Scaffold(
       appBar: AppBar(
@@ -154,6 +155,19 @@ class _ProductScreenState extends State<ProductScreen> {
             ),
           ]),
         ),
+        if (paired.isNotEmpty) ...[
+          Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(s.pairTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+          SizedBox(
+            height: 330,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: paired.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, i) => PairTile(paired[i]),
+            ),
+          ),
+        ],
         if (similar.isNotEmpty) ...[
           const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 4), child: Text('You may also like', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
           ProductGrid(similar, shrink: true),
@@ -181,6 +195,85 @@ class _Zoom extends StatelessWidget {
         itemCount: images.length,
         itemBuilder: (_, i) => InteractiveViewer(maxScale: 4, child: Center(child: Photo(images[i], width: 1600, fit: BoxFit.contain))),
       ),
+    );
+  }
+}
+
+/// One piece in "Customers also buy with this": tap the photo to open it, "+ Add" puts it in the bag (asks the size first when there are several).
+class PairTile extends StatefulWidget {
+  final Product p;
+  const PairTile(this.p, {super.key});
+  @override
+  State<PairTile> createState() => _PairTileState();
+}
+
+class _PairTileState extends State<PairTile> {
+  String? added;
+
+  void _put(Variant v) {
+    context.read<BagState>().add(widget.p, v);
+    setState(() => added = widget.p.hasSizes ? v.size : '');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Added to bag – ${widget.p.title}'),
+      action: SnackBarAction(label: 'VIEW BAG', textColor: coral, onPressed: () => goTab(context, 3)),
+    ));
+  }
+
+  void _add() {
+    final ok = widget.p.variants.where((v) => v.available).toList();
+    if (ok.isEmpty) return;
+    if (ok.length == 1) return _put(ok.first);
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.p.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 4),
+            const Text('Choose size', style: TextStyle(color: muted)),
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final v in ok)
+                OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(sheet);
+                    _put(v);
+                  },
+                  child: Text(v.size),
+                ),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.p;
+    return SizedBox(
+      width: 150,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(p))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 150, height: 190, child: Photo(p.images.first, width: 320))),
+            const SizedBox(height: 6),
+            Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, height: 1.25)),
+            const SizedBox(height: 2),
+            PriceRow(p, size: 14),
+          ]),
+        ),
+        const Spacer(),
+        SizedBox(
+          width: double.infinity,
+          child: added != null
+              ? Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('✓ Added${added!.isNotEmpty ? ' – $added' : ''}', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF1D7A46), fontWeight: FontWeight.w700)))
+              : OutlinedButton(onPressed: p.available ? _add : null, child: const Text('+ Add')),
+        ),
+      ]),
     );
   }
 }

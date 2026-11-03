@@ -8,6 +8,7 @@ import 'models.dart';
 class StoreState extends ChangeNotifier {
   List<Product> products = [];
   List<Category> categories = [];
+  List<Category> allCategories = [];
   Map<String, dynamic> contact = {};
   Map<String, dynamic> site = {};
   List<Offer> offers = [];
@@ -65,10 +66,10 @@ class StoreState extends ChangeNotifier {
     for (final pr in products) {
       if (pr.available) counts[pr.category] = (counts[pr.category] ?? 0) + 1;
     }
-    categories = ((m['categories'] as List?) ?? const [])
+    allCategories = ((m['categories'] as List?) ?? const [])
         .map((c) => Category(c['id'].toString(), c['name'].toString(), (c['image'] ?? '').toString()))
-        .where((c) => (counts[c.id] ?? 0) > 0)
         .toList();
+    categories = allCategories.where((c) => (counts[c.id] ?? 0) > 0).toList();
     contact = m['contact'] is Map ? Map<String, dynamic>.from(m['contact']) : {};
     site = m['site'] is Map ? Map<String, dynamic>.from(m['site']) : {};
     final pay = m['payments'] is Map ? m['payments'] : const {};
@@ -85,6 +86,28 @@ class StoreState extends ChangeNotifier {
   }
 
   List<Product> get live => products.where((p) => p.available && p.images.isNotEmpty).toList();
+  /// "Customers also buy with this": the same rules as the website (Admin → Pages & policies picks the categories;
+  /// otherwise accessory categories such as bangles, earrings and dupattas are found by name).
+  static final _pairRx = RegExp(r'bangle|kada|chudi|jewel|earring|jhumk|necklace|dupatta|stole|accessor|potli|clutch|jutti|mojari|footwear|bindi', caseSensitive: false);
+  Map<String, dynamic> get _pdp => site['product'] is Map ? Map<String, dynamic>.from(site['product']) : {};
+  String get pairTitle => (_pdp['pair_title'] ?? '').toString().isEmpty ? 'Customers also buy with this' : _pdp['pair_title'].toString();
+  String get pairBagLabel => (_pdp['pair_bag'] ?? '').toString().isEmpty ? 'Complete the look' : _pdp['pair_bag'].toString();
+  List<String> pairCats(String cat) {
+    final map = _pdp['pair'];
+    if (map is Map && map[cat] is List && (map[cat] as List).isNotEmpty) return (map[cat] as List).map((e) => e.toString()).where((c) => c != cat).toList();
+    final acc = allCategories.where((c) => _pairRx.hasMatch('${c.id} ${c.name}')).map((c) => c.id).toList();
+    if (acc.isEmpty) return [];
+    if (acc.contains(cat)) return allCategories.map((c) => c.id).where((id) => !acc.contains(id)).toList();
+    return acc;
+  }
+
+  List<Product> pairFor(Product p, {int max = 8}) {
+    if (_pdp['pair_on'] == false) return [];
+    final cats = pairCats(p.category);
+    if (cats.isEmpty) return [];
+    return live.where((x) => x.id != p.id && cats.contains(x.category) && x.images.isNotEmpty).take(max).toList();
+  }
+
   List<Product> inCategory(String id) => live.where((p) => p.category == id).toList();
   List<Product> get newest {
     final l = live.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
