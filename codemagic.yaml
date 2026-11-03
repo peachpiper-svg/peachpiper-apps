@@ -15,6 +15,7 @@ definitions:
       script: |
         bash ../android-signing.sh
         flutter build appbundle --release --build-number=$((100 + BUILD_NUMBER))
+        flutter build apk --release --build-number=$((100 + BUILD_NUMBER))
     - &ios_build
       name: Build iOS (IPA)
       script: |
@@ -33,6 +34,7 @@ workflows:
       - *android_build
     artifacts:
       - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/flutter-apk/app-release.apk
       - peachpiper_shop/build/app/outputs/bundle/release/*.aab
 
   shop-ios:
@@ -71,6 +73,7 @@ workflows:
       - *android_build
     artifacts:
       - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/flutter-apk/app-release.apk
       - peachpiper_admin/build/app/outputs/bundle/release/*.aab
 
   admin-ios:
