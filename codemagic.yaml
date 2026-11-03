@@ -1,0 +1,111 @@
+# Codemagic builds for both apps. Put this file at the top of the GitHub repo (next to the two app folders).
+# Before the first build, in Codemagic (Team settings → codemagic.yaml settings):
+#   • Code signing identities → Android keystores: upload/generate one, reference name  pp_upload_key
+#   • Integrations → App Store Connect: add the API key, name it  PeachPiper ASC
+#   • Environment variables → group  google_play : GCLOUD_SERVICE_ACCOUNT_CREDENTIALS = (Play Console service-account JSON, mark Secret)
+definitions:
+  android_env: &android_env
+    flutter: stable
+    java: 17
+    android_signing:
+      - pp_upload_key
+    groups:
+      - google_play
+  scripts:
+    - &android_build
+      name: Build Android (AAB)
+      script: |
+        bash ../android-signing.sh
+        flutter build appbundle --release --build-number=$((100 + BUILD_NUMBER))
+    - &ios_build
+      name: Build iOS (IPA)
+      script: |
+        xcode-project use-profiles
+        flutter build ipa --release --build-number=$((100 + BUILD_NUMBER)) --export-options-plist=/Users/builder/export_options.plist
+
+workflows:
+  shop-android:
+    name: Peach Piper shop – Android
+    instance_type: mac_mini_m2
+    working_directory: peachpiper_shop
+    environment: *android_env
+    scripts:
+      - name: Prepare
+        script: bash ../prepare.sh com.peachpiper.shop "Peach Piper"
+      - *android_build
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - peachpiper_shop/build/app/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+  shop-ios:
+    name: Peach Piper shop – iPhone
+    instance_type: mac_mini_m2
+    working_directory: peachpiper_shop
+    integrations:
+      app_store_connect: PeachPiper ASC
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.peachpiper.shop
+    scripts:
+      - name: Prepare
+        script: bash ../prepare.sh com.peachpiper.shop "Peach Piper"
+      - *ios_build
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - peachpiper_shop/build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  admin-android:
+    name: PP Admin – Android
+    instance_type: mac_mini_m2
+    working_directory: peachpiper_admin
+    environment: *android_env
+    scripts:
+      - name: Prepare
+        script: bash ../prepare.sh com.peachpiper.admin "PP Admin"
+      - *android_build
+    artifacts:
+      - build/app/outputs/bundle/release/*.aab
+      - peachpiper_admin/build/app/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
+
+  admin-ios:
+    name: PP Admin – iPhone
+    instance_type: mac_mini_m2
+    working_directory: peachpiper_admin
+    integrations:
+      app_store_connect: PeachPiper ASC
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.peachpiper.admin
+    scripts:
+      - name: Prepare
+        script: bash ../prepare.sh com.peachpiper.admin "PP Admin"
+      - *ios_build
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - peachpiper_admin/build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
