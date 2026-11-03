@@ -2,15 +2,13 @@
 # Before the first build, in Codemagic (Team settings → codemagic.yaml settings):
 #   • Code signing identities → Android keystores: upload/generate one, reference name  pp_upload_key
 #   • Integrations → App Store Connect: add the API key, name it  PeachPiper ASC
-#   • Environment variables → group  google_play : GCLOUD_SERVICE_ACCOUNT_CREDENTIALS = (Play Console service-account JSON, mark Secret)
+#   • Android: the .aab from each build is uploaded by hand in Play Console (Google needs the first upload done by hand anyway)
 definitions:
   android_env: &android_env
     flutter: stable
     java: 17
     android_signing:
       - pp_upload_key
-    groups:
-      - google_play
   scripts:
     - &android_build
       name: Build Android (AAB)
@@ -36,11 +34,6 @@ workflows:
     artifacts:
       - build/app/outputs/bundle/release/*.aab
       - peachpiper_shop/build/app/outputs/bundle/release/*.aab
-    publishing:
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-        submit_as_draft: true
 
   shop-ios:
     name: Peach Piper shop – iPhone
@@ -79,11 +72,6 @@ workflows:
     artifacts:
       - build/app/outputs/bundle/release/*.aab
       - peachpiper_admin/build/app/outputs/bundle/release/*.aab
-    publishing:
-      google_play:
-        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
-        track: internal
-        submit_as_draft: true
 
   admin-ios:
     name: PP Admin – iPhone
