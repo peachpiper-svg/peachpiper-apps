@@ -3,17 +3,19 @@ import 'package:provider/provider.dart';
 import '../main.dart';
 import '../state.dart';
 import '../widgets/product_card.dart';
+import '../widgets/top_bar.dart';
 
 /// Wishlist tab: saved pieces; the heart on any photo adds or removes them.
 class WishlistScreen extends StatelessWidget {
-  const WishlistScreen({super.key});
+  final bool tab;
+  const WishlistScreen({super.key, this.tab = false});
   @override
   Widget build(BuildContext context) {
     final s = context.watch<StoreState>();
     final wish = context.watch<WishState>();
     final items = s.products.where((p) => wish.ids.contains(p.id)).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Wishlist'), bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider())),
+      appBar: ppBar(context, title: 'Wishlist', sub: items.isEmpty ? null : '${items.length} saved', wishIcon: false),
       body: items.isEmpty
           ? Center(
               child: Padding(

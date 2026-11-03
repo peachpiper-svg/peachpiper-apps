@@ -5,7 +5,7 @@ import '../main.dart';
 import '../state.dart';
 import '../widgets/product_card.dart';
 import 'category.dart';
-import 'search.dart';
+import '../widgets/top_bar.dart';
 
 /// Shop tab: every category as a large editorial tile, plus price edits.
 class CategoriesScreen extends StatelessWidget {
@@ -14,11 +14,7 @@ class CategoriesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<StoreState>();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Shop'),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())))],
-        bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider()),
-      ),
+      appBar: ppBar(context, title: 'Categories'),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 28), children: [
         _wide(context, '', 'All styles', 'The full collection', s.live.isNotEmpty ? s.live.first.images.first : '', s.live.length, s.minPrice(s.live)),
         const SizedBox(height: 12),

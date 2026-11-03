@@ -10,8 +10,7 @@ import '../state.dart';
 import '../widgets/product_card.dart';
 import 'category.dart';
 import 'product.dart';
-import 'search.dart';
-import 'track.dart';
+import '../widgets/top_bar.dart';
 
 /// Home – built from Admin → Customize store → Home, the same blocks as the website:
 /// announcement, banners, categories, highlights, new arrivals, promos, rails, occasions, story, size help.
@@ -22,15 +21,7 @@ class HomeScreen extends StatelessWidget {
     final s = context.watch<StoreState>();
     final recent = context.watch<RecentState>();
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 58,
-        leading: IconButton(tooltip: 'Search', icon: const Icon(Icons.search), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()))),
-        title: Image.asset('assets/logo.png', height: 26),
-        actions: [
-          IconButton(tooltip: 'Track order', icon: const Icon(Icons.local_shipping_outlined), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TrackScreen()))),
-        ],
-        bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider()),
-      ),
+      appBar: ppBar(context, logo: true),
       body: RefreshIndicator(
         color: wine,
         onRefresh: () => s.load(fresh: true),
@@ -48,6 +39,7 @@ class HomeScreen extends StatelessWidget {
                     Center(child: OutlinedButton(onPressed: () => s.load(fresh: true), child: const Text('TRY AGAIN'))),
                   ])
                 : ListView(children: [
+                    _stories(context, s),
                     if (s.announcement.isNotEmpty) _Announcement(s.announcement),
                     const _Banners(),
                     _categories(context, s),
@@ -69,41 +61,82 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /* ---------- categories: arch frames like the website ---------- */
+  /* ---------- round "stories" row at the top, like Libas ---------- */
+  Widget _stories(BuildContext context, StoreState s) {
+    final cats = s.categories;
+    if (cats.isEmpty) return const SizedBox.shrink();
+    final items = <(String, String, VoidCallback)>[
+      ('New In', s.newest.isNotEmpty ? s.newest.first.images.first : '', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CategoryScreen('', 'New arrivals')))),
+      for (final c in cats)
+        (c.name, c.image.isNotEmpty ? c.image : (s.inCategory(c.id).isNotEmpty ? s.inCategory(c.id).first.images.first : ''), () => Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryScreen(c.id, c.name)))),
+    ];
+    return Container(
+      color: Colors.white,
+      height: 112,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) => GestureDetector(
+          onTap: items[i].$3,
+          child: SizedBox(
+            width: 68,
+            child: Column(children: [
+              Container(
+                width: 64,
+                height: 64,
+                padding: const EdgeInsets.all(2.5),
+                decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [coral, gold], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                  child: ClipOval(child: Photo(items[i].$2, width: 160, alignment: const Alignment(0, -.6))),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(items[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: sans(11.5, weight: FontWeight.w600, color: ink)),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /* ---------- shop by category: 3-column grid ---------- */
   Widget _categories(BuildContext context, StoreState s) {
     if (s.categories.isEmpty) return const SizedBox.shrink();
     return Column(children: [
       SectionTitle((s.home['cats_title'] ?? 'Shop by category').toString(), kickerText: 'Explore'),
-      SizedBox(
-        height: 160,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: s.categories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, i) {
-            final c = s.categories[i];
-            final inCat = s.inCategory(c.id);
-            final cover = c.image.isNotEmpty ? c.image : (inCat.isNotEmpty ? inCat.first.images.first : '');
-            return GestureDetector(
+      GridView.count(
+        crossAxisCount: 3,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 10,
+        childAspectRatio: .62,
+        children: [
+          for (final c in s.categories)
+            GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CategoryScreen(c.id, c.name))),
-              child: SizedBox(
-                width: 92,
-                child: Column(children: [
-                  Container(
-                    width: 92,
-                    height: 118,
+              child: Column(children: [
+                Expanded(
+                  child: Container(
                     padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(border: Border.all(color: goldSoft), borderRadius: const BorderRadius.vertical(top: Radius.circular(46), bottom: Radius.circular(4))),
-                    child: ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(43), bottom: Radius.circular(2)), child: Photo(cover, width: 320, alignment: const Alignment(0, -.5))),
+                    decoration: BoxDecoration(border: Border.all(color: goldSoft), borderRadius: const BorderRadius.vertical(top: Radius.circular(60), bottom: Radius.circular(6))),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(57), bottom: Radius.circular(4)),
+                      child: SizedBox.expand(
+                          child: Photo(c.image.isNotEmpty ? c.image : (s.inCategory(c.id).isNotEmpty ? s.inCategory(c.id).first.images.first : ''), width: 320, alignment: const Alignment(0, -.5))),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(c.name, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: sans(12, weight: FontWeight.w700, color: wine, height: 1.2)),
-                ]),
-              ),
-            );
-          },
-        ),
+                ),
+                const SizedBox(height: 8),
+                Text(c.name, maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, style: sans(12.5, weight: FontWeight.w700, color: wine, height: 1.2)),
+              ]),
+            ),
+        ],
       ),
     ]);
   }

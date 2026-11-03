@@ -112,9 +112,9 @@ class ProductCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(p.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: sans(13, color: ink, weight: FontWeight.w500)),
+        Text(p.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: sans(13.5, color: ink, weight: FontWeight.w500)),
         const SizedBox(height: 3),
-        PriceRow.of(p, size: 14),
+        PriceRow.of(p, size: 15),
       ]),
     );
   }
@@ -128,7 +128,7 @@ class ProductGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, c) {
       final w = (c.maxWidth - 16 * 2 - 12) / 2;
-      final ratio = w / (w * 4 / 3 + 58);
+      final ratio = w / (w * 4 / 3 + 64);
       return GridView.builder(
         shrinkWrap: shrink,
         physics: shrink ? const NeverScrollableScrollPhysics() : null,
@@ -149,7 +149,7 @@ class ProductRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: width * 4 / 3 + 62,
+      height: width * 4 / 3 + 68,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),

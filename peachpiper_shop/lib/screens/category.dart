@@ -5,14 +5,15 @@ import '../main.dart';
 import '../models.dart';
 import '../state.dart';
 import '../widgets/product_card.dart';
-import 'search.dart';
+import '../widgets/top_bar.dart';
 
 /// A list of styles: one category, "under-999" price lists, several categories (an occasion) or everything ('').
 /// Sort and filter open as sheets from the bar at the bottom, like the big fashion apps.
 class CategoryScreen extends StatefulWidget {
   final String id, name;
   final List<String>? cats;
-  const CategoryScreen(this.id, this.name, {super.key, this.cats});
+  final bool tab;
+  const CategoryScreen(this.id, this.name, {super.key, this.cats, this.tab = false});
   @override
   State<CategoryScreen> createState() => _CategoryScreenState();
 }
@@ -65,14 +66,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     final nFilters = sizes.length + catsOn.length + (maxPrice > 0 ? 1 : 0);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(children: [
-          Text(widget.name, style: serif(24)),
-          Text('${items.length} STYLES', style: kicker(color: muted, size: 9.5)),
-        ]),
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen())))],
-        bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider()),
-      ),
+      appBar: ppBar(context, title: widget.name, sub: '${items.length} styles'),
       body: items.isEmpty
           ? Center(
               child: Column(mainAxisSize: MainAxisSize.min, children: [

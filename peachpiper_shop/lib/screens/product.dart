@@ -24,7 +24,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Map<String, dynamic>? reviews;
   final pin = TextEditingController();
   String? pinMsg;
-  bool pinOk = true, pinBusy = false;
+  bool pinOk = true, pinBusy = false, added = false;
 
   @override
   void initState() {
@@ -106,7 +106,7 @@ class _ProductScreenState extends State<ProductScreen> {
             ]),
             const SizedBox(height: 10),
             Wrap(spacing: 10, runSpacing: 10, children: [
-              for (final v in widget.p.variants) _sizeBox(v, false, v.available ? () => Navigator.pop(ctx, v) : null),
+              for (final v in _sizes) _sizeBox(v, false, v.available ? () => Navigator.pop(ctx, v) : null),
             ]),
           ]),
         ),
@@ -121,12 +121,13 @@ class _ProductScreenState extends State<ProductScreen> {
     if (await _needSize()) return;
     if (!mounted) return;
     context.read<BagState>().add(widget.p, picked!);
+    setState(() => added = true);
     if (go) {
-      goTab(context, 3);
+      openBag(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Added to bag${widget.p.hasSizes ? ' – size ${picked!.size}' : ''}'),
-        action: SnackBarAction(label: 'VIEW BAG', onPressed: () => goTab(context, 3)),
+        action: SnackBarAction(label: 'VIEW BAG', onPressed: () => openBag(context)),
       ));
     }
   }
@@ -185,21 +186,39 @@ class _ProductScreenState extends State<ProductScreen> {
     );
   }
 
+  static const _order = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL', '6XL', 'FREE SIZE', 'FREE'];
+  /// sizes in the usual order (S, M, L, XL …; bangles 2.2, 2.4 …)
+  List<Variant> get _sizes {
+    int rank(Variant v) {
+      final z = v.size.toUpperCase().replaceAll(RegExp(r'\s*/.*'), '').trim();
+      final i = _order.indexOf(z);
+      if (i >= 0) return i * 1000;
+      final n = double.tryParse(z.replaceAll(RegExp(r'[^0-9.]'), ''));
+      return n == null ? 99000 : 20000 + (n * 100).round();
+    }
+
+    final l = widget.p.variants.toList();
+    l.sort((a, b) => rank(a).compareTo(rank(b)));
+    return l;
+  }
+
   Widget _sizeBox(Variant v, bool on, VoidCallback? onTap) => GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          constraints: const BoxConstraints(minWidth: 54),
-          height: 46,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          constraints: const BoxConstraints(minWidth: 58),
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: on ? wine : (v.available ? Colors.white : const Color(0xFFF7F2F1)),
-            border: Border.all(color: on ? wine : (v.available ? const Color(0xFFD9C6C1) : line)),
-            borderRadius: BorderRadius.circular(4),
+            color: on ? blush : (v.available ? Colors.white : const Color(0xFFF6F1F0)),
+            border: Border.all(color: on ? wine : (v.available ? const Color(0xFFCDB7B2) : line), width: on ? 2 : 1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(v.size,
-              style: sans(14, weight: FontWeight.w700, color: on ? cream : (v.available ? wine : muted)).copyWith(decoration: v.available ? null : TextDecoration.lineThrough)),
+          child: Stack(alignment: Alignment.center, children: [
+            Text(v.size, style: sans(16, weight: on ? FontWeight.w800 : FontWeight.w600, color: v.available ? wine : const Color(0xFFBBA9A6))),
+            if (!v.available) Positioned.fill(child: CustomPaint(painter: _Strike())),
+          ]),
         ),
       );
 
@@ -227,7 +246,7 @@ class _ProductScreenState extends State<ProductScreen> {
         actions: [
           _circle(Icons.ios_share, _share),
           const SizedBox(width: 6),
-          _circle(onWish ? Icons.favorite : Icons.favorite_border, () => wish.toggle(p.id), color: onWish ? coral : wine),
+          _circle(Icons.shopping_bag_outlined, () => openBag(context)),
           const SizedBox(width: 10),
         ],
       ),
@@ -244,6 +263,16 @@ class _ProductScreenState extends State<ProductScreen> {
                 child: Photo(p.images.isEmpty ? '' : p.images[i], width: 1080, alignment: const Alignment(0, -.3)),
               ),
             ),
+            if (p.images.length > 1)
+              Positioned(
+                right: 12,
+                bottom: 34,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .9), borderRadius: BorderRadius.circular(20)),
+                  child: Text('${photo + 1}/${p.images.length}', style: sans(12, weight: FontWeight.w700, color: wine)),
+                ),
+              ),
             if (p.images.length > 1)
               Positioned(
                 bottom: 14,
@@ -268,7 +297,7 @@ class _ProductScreenState extends State<ProductScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(s.categoryName(p.category).toUpperCase(), style: kicker()),
             const SizedBox(height: 6),
-            Text(p.title, style: serif(28, height: 1.08)),
+            Text(p.title, style: sans(20, weight: FontWeight.w600, color: ink, height: 1.3)),
             if (p.reviews > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -282,10 +311,10 @@ class _ProductScreenState extends State<ProductScreen> {
                   Text('${p.reviews} review${p.reviews == 1 ? '' : 's'}', style: sans(13, color: muted)),
                 ]),
               ),
-            const SizedBox(height: 12),
-            PriceRow(now, was, size: 22),
-            const SizedBox(height: 2),
-            Text('Inclusive of all taxes · Free shipping', style: sans(12, color: muted)),
+            const SizedBox(height: 14),
+            PriceRow(now, was, size: 26),
+            const SizedBox(height: 4),
+            Text('MRP inclusive of all taxes · Free shipping', style: sans(12.5, color: emerald, weight: FontWeight.w600)),
           ]),
         ),
         _offers(s, now),
@@ -295,7 +324,7 @@ class _ProductScreenState extends State<ProductScreen> {
             padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text('SELECT SIZE', style: kicker(color: wine)),
+                Text('Select size', style: sans(16, weight: FontWeight.w800, color: ink)),
                 if (picked != null) Text('  ·  ${picked!.size}', style: sans(12, weight: FontWeight.w700, color: coralDark)),
                 const Spacer(),
                 GestureDetector(
@@ -303,13 +332,13 @@ class _ProductScreenState extends State<ProductScreen> {
                   child: Row(children: [
                     const Icon(Icons.straighten, size: 16, color: coralDark),
                     const SizedBox(width: 4),
-                    Text('SIZE CHART', style: kicker(color: coralDark, size: 10.5)),
+                    Text('Size chart', style: sans(14, weight: FontWeight.w700, color: coralDark).copyWith(decoration: TextDecoration.underline, decorationColor: coralDark)),
                   ]),
                 ),
               ]),
-              const SizedBox(height: 12),
-              Wrap(spacing: 10, runSpacing: 10, children: [
-                for (final v in p.variants) _sizeBox(v, picked?.id == v.id, v.available ? () => setState(() => picked = v) : null),
+              const SizedBox(height: 14),
+              Wrap(spacing: 12, runSpacing: 12, children: [
+                for (final v in _sizes) _sizeBox(v, picked?.id == v.id, v.available ? () => setState(() { picked = v; added = false; }) : null),
               ]),
               if (p.variants.where((v) => v.available).length <= 2 && p.available)
                 Padding(padding: const EdgeInsets.only(top: 10), child: Text('Only a few sizes left', style: sans(12.5, weight: FontWeight.w700, color: coralDark))),
@@ -434,23 +463,23 @@ class _ProductScreenState extends State<ProductScreen> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
             child: Row(children: [
-              SizedBox(
-                width: 52,
-                height: 52,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(52, 52)),
+              Expanded(
+                flex: 10,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 54), side: const BorderSide(color: line, width: 1.2)),
                   onPressed: () => wish.toggle(p.id),
-                  child: Icon(onWish ? Icons.favorite : Icons.favorite_border, color: onWish ? coral : wine),
+                  icon: Icon(onWish ? Icons.favorite : Icons.favorite_border, color: onWish ? coral : wine, size: 20),
+                  label: Text(onWish ? 'WISHLISTED' : 'WISHLIST'),
                 ),
               ),
               const SizedBox(width: 10),
-              Expanded(child: OutlinedButton(onPressed: p.available ? () => _add() : null, child: const Text('ADD TO BAG'))),
-              const SizedBox(width: 10),
               Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: coral, foregroundColor: Colors.white),
-                  onPressed: p.available ? () => _add(go: true) : null,
-                  child: Text(p.available ? 'BUY NOW' : 'SOLD OUT'),
+                flex: 13,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 54), backgroundColor: added ? coral : wine, foregroundColor: Colors.white),
+                  onPressed: !p.available ? null : (added ? () => openBag(context) : () => _add()),
+                  icon: Icon(added ? Icons.arrow_forward : Icons.shopping_bag_outlined, size: 20),
+                  label: Text(!p.available ? 'SOLD OUT' : (added ? 'GO TO BAG' : 'ADD TO BAG')),
                 ),
               ),
             ]),
@@ -634,7 +663,7 @@ class _PairTileState extends State<PairTile> {
     setState(() => added = true);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Added to bag – ${widget.p.title}${ok.length > 1 ? ' (${cur.size})' : ''}'),
-      action: SnackBarAction(label: 'VIEW BAG', onPressed: () => goTab(context, 3)),
+      action: SnackBarAction(label: 'VIEW BAG', onPressed: () => openBag(context)),
     ));
   }
 
@@ -705,4 +734,15 @@ class _Zoom extends StatelessWidget {
       ),
     );
   }
+}
+
+/// diagonal line over a sold-out size
+class _Strike extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawLine(Offset(4, size.height - 4), Offset(size.width - 4, 4), Paint()..color = const Color(0xFFD9C6C1)..strokeWidth = 1.2);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

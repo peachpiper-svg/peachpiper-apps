@@ -5,11 +5,12 @@ import 'state.dart';
 import 'theme.dart';
 import 'screens/home.dart';
 import 'screens/categories.dart';
-import 'screens/bag.dart';
+import 'screens/category.dart';
 import 'screens/account.dart';
 import 'screens/wishlist.dart';
 
 export 'theme.dart';
+export 'widgets/top_bar.dart' show openBag;
 
 final shellKey = GlobalKey<ShellState>();
 
@@ -55,14 +56,12 @@ class ShellState extends State<Shell> {
 
   @override
   Widget build(BuildContext context) {
-    final bag = context.watch<BagState>();
-    final wish = context.watch<WishState>();
-    const pages = [HomeScreen(), CategoriesScreen(), WishlistScreen(), BagScreen(), AccountScreen()];
+    const pages = [HomeScreen(), CategoriesScreen(), CategoryScreen('', 'New arrivals', tab: true), WishlistScreen(tab: true), AccountScreen()];
     final items = [
       (Icons.home_outlined, Icons.home_rounded, 'Home', 0),
-      (Icons.grid_view_outlined, Icons.grid_view_rounded, 'Shop', 0),
-      (Icons.favorite_border, Icons.favorite, 'Wishlist', wish.ids.length),
-      (Icons.shopping_bag_outlined, Icons.shopping_bag, 'Bag', bag.count),
+      (Icons.grid_view_outlined, Icons.grid_view_rounded, 'Categories', 0),
+      (Icons.auto_awesome_outlined, Icons.auto_awesome, 'New In', 0),
+      (Icons.favorite_border, Icons.favorite, 'Wishlist', 0),
       (Icons.person_outline, Icons.person, 'Account', 0),
     ];
     return Scaffold(
@@ -81,7 +80,7 @@ class ShellState extends State<Shell> {
                     radius: 36,
                     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Badge(
-                        isLabelVisible: items[i].$4 > 0 && i == 3,
+                        isLabelVisible: items[i].$4 > 0,
                         backgroundColor: coral,
                         label: Text('${items[i].$4}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
                         child: Icon(tab == i ? items[i].$2 : items[i].$1, color: tab == i ? wine : muted, size: 24),
