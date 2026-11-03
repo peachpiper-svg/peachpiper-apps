@@ -112,9 +112,7 @@ class StoreState extends ChangeNotifier {
       final byId = {for (final x in live) x.id: x};
       return picks.map((id) => byId[id]).whereType<Product>().where((x) => x.id != p.id).take(max).toList();
     }
-    final cats = pairCats(p.category);
-    if (cats.isEmpty) return [];
-    return live.where((x) => x.id != p.id && cats.contains(x.category) && x.images.isNotEmpty).take(max).toList();
+    return [];
   }
 
   List<Product> inCategory(String id) => live.where((p) => p.category == id).toList();
