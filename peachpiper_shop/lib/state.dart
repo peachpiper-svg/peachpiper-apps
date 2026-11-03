@@ -116,6 +116,33 @@ class StoreState extends ChangeNotifier {
   }
 
   List<Product> inCategory(String id) => live.where((p) => p.category == id).toList();
+
+  /// a home "collection": a category id, or under-999 style price lists (same as the website)
+  List<Product> pickFor(String col) {
+    final m = RegExp(r'^under-(\d+)$').firstMatch(col);
+    if (m != null) {
+      final max = int.parse(m.group(1)!) * 100;
+      return live.where((p) => p.price <= max).toList();
+    }
+    if (col.isEmpty) return live;
+    return inCategory(col);
+  }
+
+  int minPrice(List<Product> l) => l.isEmpty ? 0 : l.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+
+  String categoryName(String id) {
+    for (final c in allCategories) {
+      if (c.id == id) return c.name;
+    }
+    final m = RegExp(r'^under-(\d+)$').firstMatch(id);
+    if (m != null) return 'Under ₹${m.group(1)}';
+    return 'All styles';
+  }
+
+  Map<String, dynamic> get home => site['home'] is Map ? Map<String, dynamic>.from(site['home']) : <String, dynamic>{};
+  List<Map<String, dynamic>> homeList(String key) =>
+      (home[key] is List ? home[key] as List : const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  Map<String, dynamic> get pdpSettings => site['product'] is Map ? Map<String, dynamic>.from(site['product']) : <String, dynamic>{};
   List<Product> get newest {
     final l = live.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return l;
@@ -307,6 +334,42 @@ class AccountState extends ChangeNotifier {
     } catch (_) {}
     customer = null;
     orders = [];
+    notifyListeners();
+  }
+}
+
+
+/// Recently viewed pieces and recent searches, kept on the phone.
+class RecentState extends ChangeNotifier {
+  List<String> viewed = [];
+  List<String> searches = [];
+  Future<void> load() async {
+    final p = await SharedPreferences.getInstance();
+    viewed = p.getStringList('viewed') ?? [];
+    searches = p.getStringList('searches') ?? [];
+    notifyListeners();
+  }
+
+  Future<void> saw(String id) async {
+    viewed = [id, ...viewed.where((x) => x != id)].take(16).toList();
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('viewed', viewed);
+    notifyListeners();
+  }
+
+  Future<void> searched(String q) async {
+    q = q.trim();
+    if (q.length < 2) return;
+    searches = [q, ...searches.where((x) => x.toLowerCase() != q.toLowerCase())].take(8).toList();
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('searches', searches);
+    notifyListeners();
+  }
+
+  Future<void> clearSearches() async {
+    searches = [];
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('searches', searches);
     notifyListeners();
   }
 }

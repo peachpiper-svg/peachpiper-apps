@@ -6,6 +6,7 @@ import '../main.dart';
 import '../state.dart';
 import '../widgets/product_card.dart';
 import 'track.dart';
+import 'wishlist.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -26,19 +27,30 @@ class _AccountScreenState extends State<AccountScreen> {
     final wish = context.watch<WishState>();
     final c = a.customer;
     return Scaffold(
-      appBar: AppBar(title: const Text('Account')),
-      body: ListView(padding: const EdgeInsets.all(14), children: [
+      appBar: AppBar(title: const Text('Account'), bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider())),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
         if (c == null) _login(a) else ...[
-          Text('Hi ${(c['name'] ?? '').toString().isNotEmpty ? c['name'] : c['email']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-          Text((c['email'] ?? '').toString(), style: const TextStyle(color: muted)),
-          const SizedBox(height: 14),
-          const Text('My orders', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+            decoration: BoxDecoration(color: wine, borderRadius: BorderRadius.circular(6)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('NAMASTE', style: kicker(color: goldSoft)),
+              const SizedBox(height: 4),
+              Text('${(c['name'] ?? '').toString().isNotEmpty ? c['name'] : 'Welcome back'}', style: serif(30, color: const Color(0xFFFFF4EC))),
+              const SizedBox(height: 2),
+              Text((c['email'] ?? '').toString(), style: sans(13, color: const Color(0xFFF2D9D2))),
+            ]),
+          ),
+          const SizedBox(height: 22),
+          Text('My orders', style: serif(24)),
           const SizedBox(height: 6),
           if (a.orders.isEmpty) TextButton(onPressed: a.loadOrders, child: const Text('Load my orders')),
           for (final o in a.orders.take(20))
             Card(
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: line)),
+              color: Colors.white,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6), side: const BorderSide(color: line)),
               child: ListTile(
                 title: Text('${o['number']} · ${rupees((o['total'] as num?) ?? 0)}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 subtitle: Text('${(o['status'] ?? '').toString().toUpperCase()} · ${(o['created_at'] ?? '').toString().split(' ').first}\n'
@@ -91,11 +103,13 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Widget _login(AccountState a) => Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: line)),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: line)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Log in to see your orders', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          Text('WELCOME', style: kicker()),
           const SizedBox(height: 4),
-          const Text('We email you a 6-digit code – no password needed.', style: TextStyle(color: muted)),
+          Text('Log in to your account', style: serif(28)),
+          const SizedBox(height: 6),
+          Text('See your orders, track parcels and check out faster. We email you a 6-digit code – no password needed.', style: sans(13.5, color: muted, height: 1.5)),
           const SizedBox(height: 12),
           TextField(controller: email, keyboardType: TextInputType.emailAddress, enabled: !sent, decoration: const InputDecoration(labelText: 'Email')),
           if (sent) ...[
@@ -124,27 +138,22 @@ class _AccountScreenState extends State<AccountScreen> {
                     }
                     setState(() => busy = false);
                   },
-            child: Text(sent ? 'Log in' : 'Send code'),
+            child: Text(sent ? 'LOG IN' : 'SEND CODE'),
           ),
           if (sent) TextButton(onPressed: () => setState(() => sent = false), child: const Text('Use another email')),
         ]),
       );
 
-  Widget _tile(IconData i, String t, VoidCallback onTap) => ListTile(contentPadding: EdgeInsets.zero, leading: Icon(i, color: wine), title: Text(t), trailing: const Icon(Icons.chevron_right, color: muted), onTap: onTap);
+  Widget _tile(IconData i, String t, VoidCallback onTap) => Column(children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Container(width: 38, height: 38, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: goldSoft)), child: Icon(i, color: wine, size: 19)),
+          title: Text(t, style: sans(15, weight: FontWeight.w600, color: ink)),
+          trailing: const Icon(Icons.chevron_right, color: muted),
+          onTap: onTap,
+        ),
+        const Divider(),
+      ]);
 
   Future<void> _open(String u) => launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
-}
-
-class WishlistScreen extends StatelessWidget {
-  const WishlistScreen({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final s = context.watch<StoreState>();
-    final wish = context.watch<WishState>();
-    final items = s.products.where((p) => wish.ids.contains(p.id)).toList();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Wishlist')),
-      body: items.isEmpty ? const Center(child: Text('Tap ♡ on a style to save it here.', style: TextStyle(color: muted))) : ProductGrid(items),
-    );
-  }
 }
