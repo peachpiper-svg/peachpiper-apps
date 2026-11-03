@@ -9,6 +9,7 @@ class StoreState extends ChangeNotifier {
   List<Product> products = [];
   List<Category> categories = [];
   List<Category> allCategories = [];
+  Map<String, List<String>> pairs = {};
   Map<String, dynamic> contact = {};
   Map<String, dynamic> site = {};
   List<Offer> offers = [];
@@ -72,6 +73,8 @@ class StoreState extends ChangeNotifier {
     categories = allCategories.where((c) => (counts[c.id] ?? 0) > 0).toList();
     contact = m['contact'] is Map ? Map<String, dynamic>.from(m['contact']) : {};
     site = m['site'] is Map ? Map<String, dynamic>.from(m['site']) : {};
+    pairs = {};
+    if (m['pairs'] is Map) (m['pairs'] as Map).forEach((k, v) { if (v is List) pairs[k.toString()] = v.map((e) => e.toString()).toList(); });
     final pay = m['payments'] is Map ? m['payments'] : const {};
     cod = pay['cod'] != false;
     online = pay['online'] == true;
@@ -90,7 +93,7 @@ class StoreState extends ChangeNotifier {
   /// otherwise accessory categories such as bangles, earrings and dupattas are found by name).
   static final _pairRx = RegExp(r'bangle|kada|chudi|jewel|earring|jhumk|necklace|dupatta|stole|accessor|potli|clutch|jutti|mojari|footwear|bindi', caseSensitive: false);
   Map<String, dynamic> get _pdp => site['product'] is Map ? Map<String, dynamic>.from(site['product']) : {};
-  String get pairTitle => (_pdp['pair_title'] ?? '').toString().isEmpty ? 'Customers also buy with this' : _pdp['pair_title'].toString();
+  String get pairTitle => (_pdp['pair_title'] ?? '').toString().isEmpty || _pdp['pair_title'] == 'Customers also buy with this' ? 'Better together' : _pdp['pair_title'].toString();
   String get pairBagLabel => (_pdp['pair_bag'] ?? '').toString().isEmpty ? 'Complete the look' : _pdp['pair_bag'].toString();
   List<String> pairCats(String cat) {
     final map = _pdp['pair'];
@@ -103,6 +106,12 @@ class StoreState extends ChangeNotifier {
 
   List<Product> pairFor(Product p, {int max = 8}) {
     if (_pdp['pair_on'] == false) return [];
+    /* pieces picked on this product in the admin come first, in the order picked */
+    final picks = pairs[p.id];
+    if (picks != null && picks.isNotEmpty) {
+      final byId = {for (final x in live) x.id: x};
+      return picks.map((id) => byId[id]).whereType<Product>().where((x) => x.id != p.id).take(max).toList();
+    }
     final cats = pairCats(p.category);
     if (cats.isEmpty) return [];
     return live.where((x) => x.id != p.id && cats.contains(x.category) && x.images.isNotEmpty).take(max).toList();

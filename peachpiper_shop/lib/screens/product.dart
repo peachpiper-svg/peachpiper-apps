@@ -142,6 +142,20 @@ class _ProductScreenState extends State<ProductScreen> {
                 icon: const Icon(Icons.chat_outlined),
                 label: const Text('Order on WhatsApp'),
               ),
+            if (paired.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Center(child: Text(s.pairTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: wine))),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 345,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: paired.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (_, i) => PairTile(paired[i]),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             _promise(Icons.local_shipping_outlined, 'Free shipping across India'),
             if (s.cod) _promise(Icons.payments_outlined, 'Cash on Delivery available'),
@@ -155,19 +169,6 @@ class _ProductScreenState extends State<ProductScreen> {
             ),
           ]),
         ),
-        if (paired.isNotEmpty) ...[
-          Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(s.pairTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-          SizedBox(
-            height: 330,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: paired.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => PairTile(paired[i]),
-            ),
-          ),
-        ],
         if (similar.isNotEmpty) ...[
           const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 4), child: Text('You may also like', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
           ProductGrid(similar, shrink: true),
@@ -199,7 +200,7 @@ class _Zoom extends StatelessWidget {
   }
 }
 
-/// One piece in "Customers also buy with this": tap the photo to open it, "+ Add" puts it in the bag (asks the size first when there are several).
+/// One piece in "Better together": photo, ADD, name, size picker and price – adds the chosen size without leaving the page.
 class PairTile extends StatefulWidget {
   final Product p;
   const PairTile(this.p, {super.key});
@@ -208,71 +209,66 @@ class PairTile extends StatefulWidget {
 }
 
 class _PairTileState extends State<PairTile> {
-  String? added;
+  late final List<Variant> ok = widget.p.variants.where((v) => v.available).toList();
+  late Variant? v = ok.isNotEmpty ? ok.first : null;
+  bool added = false;
 
-  void _put(Variant v) {
-    context.read<BagState>().add(widget.p, v);
-    setState(() => added = widget.p.hasSizes ? v.size : '');
+  void _add() {
+    final cur = v;
+    if (cur == null) return;
+    context.read<BagState>().add(widget.p, cur);
+    setState(() => added = true);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Added to bag – ${widget.p.title}'),
+      content: Text('Added to bag – ${widget.p.title}${ok.length > 1 ? ' (${cur.size})' : ''}'),
       action: SnackBarAction(label: 'VIEW BAG', textColor: coral, onPressed: () => goTab(context, 3)),
     ));
   }
 
-  void _add() {
-    final ok = widget.p.variants.where((v) => v.available).toList();
-    if (ok.isEmpty) return;
-    if (ok.length == 1) return _put(ok.first);
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(widget.p.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-            const SizedBox(height: 4),
-            const Text('Choose size', style: TextStyle(color: muted)),
-            const SizedBox(height: 12),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final v in ok)
-                OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(sheet);
-                    _put(v);
-                  },
-                  child: Text(v.size),
-                ),
-            ]),
-          ]),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final p = widget.p;
+    final p = widget.p, cur = v;
     return SizedBox(
-      width: 150,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      width: 138,
+      child: Column(children: [
         GestureDetector(
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(p))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 150, height: 190, child: Photo(p.images.first, width: 320))),
-            const SizedBox(height: 6),
-            Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, height: 1.25)),
-            const SizedBox(height: 2),
-            PriceRow(p, size: 14),
-          ]),
+          child: ClipRRect(borderRadius: const BorderRadius.vertical(top: Radius.circular(10)), child: SizedBox(width: 138, height: 172, child: Photo(p.images.first, width: 320))),
         ),
-        const Spacer(),
         SizedBox(
           width: double.infinity,
-          child: added != null
-              ? Padding(padding: const EdgeInsets.symmetric(vertical: 10), child: Text('✓ Added${added!.isNotEmpty ? ' – $added' : ''}', textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF1D7A46), fontWeight: FontWeight.w700)))
-              : OutlinedButton(onPressed: p.available ? _add : null, child: const Text('+ Add')),
+          height: 42,
+          child: FilledButton(
+            onPressed: cur == null ? null : _add,
+            style: FilledButton.styleFrom(backgroundColor: added ? const Color(0xFF1D7A46) : wine, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(10))), padding: EdgeInsets.zero),
+            child: Text(added ? '✓ ADDED' : 'ADD', style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1)),
+          ),
         ),
+        const SizedBox(height: 6),
+        Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, height: 1.25)),
+        const SizedBox(height: 6),
+        if (ok.length > 1)
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(border: Border.all(color: wine), borderRadius: BorderRadius.circular(8)),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Variant>(
+                value: cur,
+                isDense: true,
+                items: [for (final x in ok) DropdownMenuItem(value: x, child: Text(x.size, style: const TextStyle(fontSize: 14)))],
+                onChanged: (x) => setState(() {
+                  v = x;
+                  added = false;
+                }),
+              ),
+            ),
+          ),
+        const SizedBox(height: 6),
+        if (cur != null)
+          Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, children: [
+            if (cur.mrp > cur.price) Text(rupees(cur.mrp), style: const TextStyle(fontSize: 12, color: muted, decoration: TextDecoration.lineThrough)),
+            Text(rupees(cur.price), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFFC0392B))),
+          ]),
       ]),
     );
   }
